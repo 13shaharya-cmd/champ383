@@ -1,3 +1,5 @@
+
+
 // Thumbs Up Handler - Show success message
     handleThumbsUp(event) {
         const actionId = event.target.dataset.actionId;
