@@ -1,119 +1,131 @@
-        <!-- Jira 178, Feedback Popover -->
-
-.thumbs-container {
-    display: flex;
-    background-color: #f3f2f2;
-    border: 1px solid #c9c7c5;
-    border-radius: 0.25rem;
-    overflow: hidden;
-    margin-left: 1rem;
-    position: relative;
-}
-
-.thumb-btn {
-    background: none;
-    border: none;
-    padding: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 2rem;
-    min-height: 2rem;
-}
-
-.thumb-btn:hover {
-    background-color: #e5e5e5;
-}
-
-.thumb-btn .slds-button__icon {
-    fill: #706e6b;
-    width: 1rem;
-    height: 1rem;
-}
-
-.thumb-btn:hover .slds-button__icon {
-    fill: #444;
-}
-
-.thumb-up {
-    /* No border between buttons */
-}
-
-.thumb-down {
-    /* No border needed for the right button */
-}
-
-/* Feedback Popover Styles */
-.feedback-popover {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    z-index: 9001;
-    width: 320px;
-    max-width: 90vw;
-    margin-top: 0.5rem;
-    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.15);
-}
+@track feedbackOptions = [ 
+        { label: 'Inaccurate', value: 'inaccurate', checked: false },
+        { label: 'Incomplete', value: 'incomplete', checked: false },
+        { label: 'Biased, toxic, or harmful', value: 'biased', checked: false },
+        { label: 'Inappropriate tone or style', value: 'inappropriate', checked: false },
+        { label: 'Other', value: 'other', checked: false }
+    ];
+    @track feedbackText = ''; 
+    @track currentActionId = '';
 
 
-.slds-checkbox {
-    position: relative;
-    display: block;
-    margin-bottom: 0.5rem;
-}
+at the end:
 
-.slds-checkbox input[type="checkbox"] {
-    position: absolute;
-    opacity: 0;
-    width: 1px;
-    height: 1px;
-    border: 0;
-    clip: rect(0 0 0 0);
-    margin: -1px;
-    padding: 0;
-    overflow: hidden;
-}
+// When user clicks thumbs up, show a quick success message and that's it
+    // Uses 'dismissible' mode for close icon with auto-dismiss
+    handleThumbsUp(event) {
+        const actionId = event.target.dataset.actionId; 
+        
+        // Show toast with close icon
+        this.dispatchEvent(
+            new ShowToastEvent({
+                title: 'Thanks for your feedback.',
+                message: '',
+                variant: 'success',
+                mode: 'dismissible'     
+            })
+        );
+        
+        // Auto-dismiss after 3 seconds
+        setTimeout(() => {
+            // Dispatch a custom event to close the toast
+            this.dispatchEvent(new CustomEvent('closetoast'));
+        }, 3000);
+    }
 
-.slds-checkbox__label {
-    display: flex;
-    align-items: flex-start;
-    cursor: pointer;
-    font-size: 0.875rem;
-    line-height: 1.25;
-}
+    // When user clicks thumbs down, we need more information, so open the modal
+    // This also triggers the CSS class change to make button blue
+    handleThumbsDown(event) {
+        this.currentActionId = event.target.dataset.actionId;
+        let targetActionId =  event.target.dataset.actionId;                   
+        const target = this.template.querySelector(`[data-pop-id="${targetActionId}"]`);
+        target.classList.remove('slds-hide');
+        target.classList.add('slds-show');
+        this.resetFeedbackForm();                        
+    }
 
-.slds-checkbox__faux {
-    width: 1rem;
-    height: 1rem;
-    display: inline-block;
-    position: relative;
-    flex-shrink: 0;
-    border: 1px solid #c9c7c5;
-    border-radius: 0.125rem;
-    background: #fff;
-    margin-right: 0.5rem;
-    margin-top: 0.125rem;
-}
+    // Utility method to reset the feedback form to initial clean state
+    // Unchecks all checkboxes and clears the text area
+    resetFeedbackForm() {
+        // this.feedbackOptions = this.feedbackOptions.map(option => ({
+        //     ...option,
+        //     checked: false 
+        // }));
+        this.template.querySelectorAll('lightning-input').forEach(element => {
+        if(element.type === 'checkbox' || element.type === 'checkbox-button'){
+            element.checked = false;
+        }else{
+            element.value = null;
+        }      
+        });
+        this.feedbackText = '';
+    }
 
-.slds-checkbox input:checked + label .slds-checkbox__faux {
-    background: #0176d3;
-    border-color: #0176d3;
-}
+    // Handles when user checks/unchecks any of the 5 predefined feedback options
+    // Updates the feedbackOptions array to track which boxes are checked
+    handleFeedbackOptionChange(event) {
+        const value = event.target.value; 
+        this.feedbackOptions = this.feedbackOptions.map(option => ({
+            ...option,
+            checked: option.value === value ? event.target.checked : option.checked
+        }));
+    }
 
-.slds-checkbox input:checked + label .slds-checkbox__faux::after {
-    content: '';
-    position: absolute;
-    top: 0.125rem;
-    left: 0.25rem;
-    width: 0.25rem;
-    height: 0.5rem;
-    border: 2px solid #fff;
-    border-top: 0;
-    border-left: 0;
-    transform: rotate(45deg);
-}
+    // Captures user's additional feedback text as they type in the textarea
+    handleFeedbackTextChange(event) {
+        this.feedbackText = event.target.value; 
+    }
 
-.slds-form-element__legend {
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-}
+    // Processes and submits the complete feedback when user clicks Submit
+    // Collects both checkbox selections and text input
+    handleSubmitFeedback() {
+        // Extract all checked options into an array of labels
+        const selectedOptions = this.feedbackOptions
+            .filter(option => option.checked)      
+            .map(option => option.label);         
+
+        // For now, we just log to console for demonstration
+        console.log('Feedback submitted:', {
+            actionId: this.currentActionId,        
+            selectedOptions: selectedOptions,
+            feedbackText: this.feedbackText 
+        });
+
+        // Store the current action ID before closing modal
+        const actionIdToClose = this.currentActionId;
+
+        // Show confirmation message to user - same style as thumbs up with close icon
+        this.dispatchEvent(
+            new ShowToastEvent({
+                title: 'Thanks for your feedback.',
+                message: '',
+                variant: 'success',
+                mode: 'dismissible'
+            })
+        );
+        
+        // Auto-dismiss after 3 seconds
+        setTimeout(() => {
+            // Dispatch a custom event to close the toast
+            this.dispatchEvent(new CustomEvent('closetoast'));
+        }, 3000);
+
+        // Clean up and close the modal with proper action ID
+        this.closeFeedbackModal(actionIdToClose);
+    }
+
+    // When user clicks Cancel button, just close modal without saving anything
+    handleCancelFeedback(event) {
+        const targetCloseId = event.target.dataset.actionId;
+        this.closeFeedbackModal(targetCloseId); 
+    }
+
+    // Centralized method to close modal and reset all related state
+    // This also triggers the thumbs down button to return to gray color
+    closeFeedbackModal(targetCloseId) {
+        const target = this.template.querySelector(`[data-pop-id="${targetCloseId}"]`);
+        target.classList.add('slds-hide');
+        target.classList.remove('slds-show');
+        this.currentActionId = '';      
+        this.resetFeedbackForm(); 
+    }
